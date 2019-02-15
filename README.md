@@ -27,15 +27,25 @@ $ docker-compose up -d
 
 # How to deploy Discourse in Kubernetes?
 
-You can find an example for testing in the file `test.yaml`. To launch this sample file run:
+You can find an example manifests in the `k8s` directory. To launch this basic configuration run:
 
 ```bash
-$ kubectl apply -f test.yaml
+$ for x in ./k8s/{00..06}_*; do kubectl create -f $x; sleep 2; done
 ```
+
+> NOTE: This will create `discourse` namespace and launch all the components in there.
+
+> NOTE: You may want to modify `./k8s/01_volumes.yaml` manifest and adapt `PersistentVolume` driver to your environment. In this basic configuration we are usig `hostPath` driver.
 
 > NOTE: If you are pulling from a private containers registry, replace the image name with the full URL to the docker image. E.g.
 >
 > - image: 'your-registry/image-name:your-version'
+
+To clean up run:
+
+```bash
+$ for x in ./k8s/{06..00}_*; do kubectl delete -f $x; done
+```
 
 # Supported tags and respective `Dockerfile` links
 
