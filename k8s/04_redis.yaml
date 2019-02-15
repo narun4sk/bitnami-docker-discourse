@@ -1,0 +1,85 @@
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+
+metadata:
+  namespace: discourse
+  name: redis
+
+spec:
+  replicas: 1
+  minReadySeconds: 15
+
+  strategy:
+    type: Recreate
+
+  selector:
+    matchLabels:
+      app: redis
+      cat: cache
+
+  template:
+
+    metadata:
+      labels:
+        app: redis
+        cat: cache
+
+    spec:
+      terminationGracePeriodSeconds: 5
+
+      volumes:
+
+      - name: discourse-pv
+        persistentVolumeClaim:
+          claimName: discourse
+
+      containers:
+
+      - name: redis
+        image: redis:alpine
+        imagePullPolicy: IfNotPresent
+
+        args:
+        - '--appendonly'
+        - 'yes'
+
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+
+        envFrom:
+
+        - configMapRef:
+            name: redis
+
+        volumeMounts:
+
+        - name: discourse-pv
+          subPath: redis
+          mountPath: /data
+
+        ports:
+
+        - name: redis
+          containerPort: 6379
+          protocol: TCP
+
+        readinessProbe:
+          initialDelaySeconds: 30
+          timeoutSeconds: 1
+          successThreshold: 1
+          failureThreshold: 20
+          periodSeconds: 15
+          tcpSocket:
+            port: redis
+
+        livenessProbe:
+          initialDelaySeconds: 30
+          timeoutSeconds: 1
+          failureThreshold: 3
+          periodSeconds: 50
+          tcpSocket:
+            port: redis
+---

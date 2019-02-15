@@ -1,0 +1,56 @@
+---
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  namespace: discourse
+  name: discourse
+
+data:
+  DISCOURSE_EMAIL: "user@example.com"
+  DISCOURSE_SITENAME: "My site!"
+  DISCOURSE_HOSTNAME: "www.example.com"
+  DISCOURSE_PORT_NUMBER: "3000"
+  DISCOURSE_EXTERNAL_PORT_NUMBER: "80"
+  DISCOURSE_POSTGRESQL_NAME: "discourse_db"
+  POSTGRESQL_HOST: "pgsql.discourse.svc.cluster.local"
+  POSTGRESQL_PORT_NUMBER: "5432"
+  REDIS_HOST: "redis.discourse.svc.cluster.local"
+  REDIS_PORT_NUMBER: "6379"
+  REDIS_PASSWORD: ""
+  # sidekiq vars
+  DISCOURSE_HOST: "discourse.discourse.svc.cluster.local"
+  DISCOURSE_PORT: "3000"
+  SMTP_HOST: "smtp.gmail.com"
+  SMTP_PORT: "587"
+  SMTP_USER: "your_email@gmail.com"
+  SMTP_PASSWORD: "your_password"
+  SMTP_TLS: "true"
+---
+
+
+---
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  namespace: discourse
+  name: pgsql
+
+data:
+  PGDATA: /var/lib/postgresql/data/pgdata
+  POSTGRES_DB: discourse_db
+---
+
+
+---
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  namespace: discourse
+  name: redis
+
+data:
+  ALLOW_EMPTY_PASSWORD: "yes"
+---
