@@ -27,15 +27,15 @@ $ docker-compose up -d
 
 # How to deploy Discourse in Kubernetes?
 
-You can find an example manifests in the `k8s` directory. To launch this basic configuration run:
+Example configuration can be found in `k8s` directory. To deploy it please run:
 
 ```bash
-$ for x in ./k8s/{00..06}_*; do kubectl create -f $x; sleep 2; done
+$ kubectl create -f ./k8s/manifests.yaml
 ```
 
-> NOTE: This will create `discourse` namespace and launch all the components in there.
+> NOTE: This will create `discourse-bitnami` namespace and deploy all the components in there.
 
-> NOTE: You may want to modify `./k8s/01_volumes.yaml` manifest and adapt `PersistentVolume` driver to your environment. In this basic configuration we are usig `hostPath` driver.
+> NOTE: In example configuration we are using `hostPath` driver, which is suitable for the *sigle-node* cluster. Please change the driver to one which suits your environment better. See [Types of Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#types-of-persistent-volumes) for more info.
 
 > NOTE: If you are pulling from a private containers registry, replace the image name with the full URL to the docker image. E.g.
 >
@@ -44,7 +44,7 @@ $ for x in ./k8s/{00..06}_*; do kubectl create -f $x; sleep 2; done
 To clean up run:
 
 ```bash
-$ for x in ./k8s/{06..00}_*; do kubectl delete -f $x; done
+$ kubectl delete -f ./k8s/manifests.yaml
 ```
 
 # Supported tags and respective `Dockerfile` links
@@ -74,7 +74,7 @@ Running Discourse with a database server is the recommended way. You can either 
 This is the recommended way to run Discourse. You can use the following docker compose template:
 
 > NOTE: If you are pulling from a private containers registry, replace the image name with the full URL to the docker image. E.g.
-> 
+>
 > discourse:
 >  image: 'your-registry/discourse:your-version'
 
