@@ -1,0 +1,561 @@
+#
+# Create a Namespace, where Discourse & friends will be deployed.
+#
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: discourse-bitnami
+---
+#
+# Create PersistentVolume, where Discourse, PostgreSQL
+# and Redis gonna keep the data.
+# Please feel free to change the hostPath driver to a
+# different one, which suits your environment better.
+#
+---
+apiVersion: v1
+kind: PersistentVolume
+
+metadata:
+  namespace: discourse-bitnami
+  name: discourse-bitnami
+
+  labels:
+    type: discourse-all
+
+spec:
+  # Keep the data, when volume is deleted.
+  persistentVolumeReclaimPolicy: Retain
+
+  # Use or create directory at the given path on the host.
+  hostPath:
+    type: DirectoryOrCreate
+    path: /mnt/discourse-bitnami
+
+  accessModes:
+  - ReadWriteMany
+
+  capacity:
+    storage: 10Gi   # minimum according to Discourse hardware req.
+---
+#
+# Bind to the volume created in the previous step.
+#
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+
+metadata:
+  namespace: discourse-bitnami
+  name: discourse-bitnami
+
+spec:
+  storageClassName: ""
+
+  accessModes:
+  - ReadWriteMany
+
+  resources:
+    requests:
+      storage: 10Gi
+
+  selector:
+    matchLabels:
+      type: discourse-all
+---
+#
+# Configure not sensitive Discourse and sidekiq environment
+# variables. For the sensitive data, like usernames and
+# passwords see secrets manifest below.
+#
+---
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  namespace: discourse-bitnami
+  name: discourse
+
+data:
+  DISCOURSE_SITENAME: "My site!"
+  DISCOURSE_HOSTNAME: "www.example.com"
+  DISCOURSE_PORT_NUMBER: "3000"
+  DISCOURSE_EXTERNAL_PORT_NUMBER: "80"
+  DISCOURSE_POSTGRESQL_NAME: "discourse_db"
+  POSTGRESQL_HOST: "pgsql.discourse-bitnami.svc.cluster.local"
+  POSTGRESQL_PORT_NUMBER: "5432"
+  REDIS_HOST: "redis.discourse-bitnami.svc.cluster.local"
+  REDIS_PORT_NUMBER: "6379"
+  REDIS_PASSWORD: ""
+  # sidekiq vars
+  DISCOURSE_HOST: "discourse.discourse-bitnami.svc.cluster.local"
+  DISCOURSE_PORT: "3000"
+  SMTP_HOST: "smtp.gmail.com"
+  SMTP_PORT: "587"
+  SMTP_TLS: "true"
+---
+#
+# Configure not sensitive PostgreSQL environment variables.
+# For the sensitive data, like usernames and passwords see
+# secrets manifest below.
+#
+---
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  namespace: discourse-bitnami
+  name: pgsql
+
+data:
+  PGDATA: /var/lib/postgresql/data/pgdata
+  POSTGRES_DB: discourse_db
+---
+#
+# Configure not sensitive Redis environment variables.
+# For the sensitive data, like usernames and passwords see
+# secrets manifest below.
+#
+---
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  namespace: discourse-bitnami
+  name: redis
+
+data:
+  ALLOW_EMPTY_PASSWORD: "yes"
+---
+#
+# Configure sensitive Discourse and sidekiq environment
+# variables. All values below are encoded using base64.
+#
+---
+apiVersion: v1
+kind: Secret
+type: Opaque
+
+metadata:
+  namespace: discourse-bitnami
+  name: discourse
+
+data:
+  DISCOURSE_EMAIL: dXNlckBleGFtcGxlLmNvbQ==     # user@example.com
+  DISCOURSE_USERNAME: dXNlcg==                  # user
+  DISCOURSE_PASSWORD: Yml0bmFtaTEyMw==          # bitnami123
+  DISCOURSE_POSTGRESQL_USERNAME: cG9zdGdyZXM=   # postgres
+  DISCOURSE_POSTGRESQL_PASSWORD: cG9zdGdyZXM=   # postgres
+  POSTGRESQL_ROOT_USER: cG9zdGdyZXM=            # postgres
+  POSTGRESQL_ROOT_PASSWORD: cG9zdGdyZXM=        # postgres
+  SMTP_USER: eW91cl9lbWFpbEBnbWFpbC5jb20=       # your_email@gmail.com
+  SMTP_PASSWORD: eW91cl9wYXNzd29yZA==           # your_password
+---
+#
+# Configure sensitive PostgreSQL environment variables.
+# All values below are encoded using base64.
+#
+---
+apiVersion: v1
+kind: Secret
+type: Opaque
+
+metadata:
+  namespace: discourse-bitnami
+  name: pgsql
+
+data:
+  POSTGRES_USER: cG9zdGdyZXM=       # postgres
+  POSTGRES_PASSWORD: cG9zdGdyZXM=   # postgres
+---
+#
+# Create Discourse Service.
+#
+---
+apiVersion: v1
+kind: Service
+
+metadata:
+  namespace: discourse-bitnami
+  name: discourse
+
+spec:
+  type: ClusterIP
+  sessionAffinity: None
+
+  ports:
+
+  - name: http-discourse
+    port: 3000
+    targetPort: http-discourse
+
+  selector:
+    app: discourse
+    cat: web
+---
+#
+# Create PostgreSQL Service.
+#
+---
+apiVersion: v1
+kind: Service
+
+metadata:
+  namespace: discourse-bitnami
+  name: pgsql
+
+spec:
+  type: ClusterIP
+  clusterIP: None
+  sessionAffinity: None
+
+  ports:
+
+  - name: pgsql
+    port: 5432
+    targetPort: pgsql
+
+  selector:
+    app: pgsql
+    cat: db
+---
+#
+# Create Redis Service.
+#
+---
+apiVersion: v1
+kind: Service
+
+metadata:
+  namespace: discourse-bitnami
+  name: redis
+
+spec:
+  type: ClusterIP
+  clusterIP: None
+  sessionAffinity: None
+
+  ports:
+
+  - name: redis
+    port: 6379
+    targetPort: redis
+
+  selector:
+    app: redis
+    cat: cache
+---
+#
+# Create Redis Deployment.
+#
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+
+metadata:
+  namespace: discourse-bitnami
+  name: redis
+
+spec:
+  replicas: 1
+  minReadySeconds: 15
+
+  strategy:
+    type: Recreate
+
+  selector:
+    matchLabels:
+      app: redis
+      cat: cache
+
+  template:
+
+    metadata:
+      labels:
+        app: redis
+        cat: cache
+
+    spec:
+      terminationGracePeriodSeconds: 5
+
+      volumes:
+
+      - name: discourse-pv
+        persistentVolumeClaim:
+          claimName: discourse-bitnami
+
+
+      containers:
+
+      - name: redis
+        image: redis:alpine
+        imagePullPolicy: IfNotPresent
+
+        args:
+        - '--appendonly'
+        - 'yes'
+
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+
+        envFrom:
+
+        - configMapRef:
+            name: redis
+
+        volumeMounts:
+
+        - name: discourse-pv
+          subPath: redis
+          mountPath: /data
+
+        ports:
+
+        - name: redis
+          containerPort: 6379
+          protocol: TCP
+
+        readinessProbe:
+          initialDelaySeconds: 30
+          timeoutSeconds: 1
+          successThreshold: 1
+          failureThreshold: 20
+          periodSeconds: 15
+          tcpSocket:
+            port: redis
+
+        livenessProbe:
+          initialDelaySeconds: 30
+          timeoutSeconds: 1
+          failureThreshold: 3
+          periodSeconds: 50
+          tcpSocket:
+            port: redis
+---
+#
+# Create PostgreSQL Deployment.
+#
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+
+metadata:
+  namespace: discourse-bitnami
+  name: pgsql
+
+spec:
+  replicas: 1
+  minReadySeconds: 15
+
+  strategy:
+    type: Recreate
+
+  selector:
+    matchLabels:
+      app: pgsql
+      cat: db
+
+  template:
+
+    metadata:
+      labels:
+        app: pgsql
+        cat: db
+
+    spec:
+      terminationGracePeriodSeconds: 5
+
+      volumes:
+
+      - name: discourse-pv
+        persistentVolumeClaim:
+          claimName: discourse-bitnami
+
+      containers:
+
+      - name: pgsql
+        image: postgres:10-alpine   # It's known to work well with PostgreSQL 10
+        imagePullPolicy: IfNotPresent
+
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+
+        envFrom:
+
+        - configMapRef:
+            name: pgsql
+
+        - secretRef:
+            name: pgsql
+
+        volumeMounts:
+
+        - name: discourse-pv
+          subPath: pgsql
+          mountPath: /var/lib/postgresql/data
+
+        ports:
+
+        - name: pgsql
+          containerPort: 5432
+          protocol: TCP
+
+        readinessProbe:
+          initialDelaySeconds: 30
+          timeoutSeconds: 1
+          successThreshold: 1
+          failureThreshold: 20
+          periodSeconds: 15
+          tcpSocket:
+            port: pgsql
+
+        livenessProbe:
+          initialDelaySeconds: 30
+          timeoutSeconds: 1
+          failureThreshold: 3
+          periodSeconds: 50
+          tcpSocket:
+            port: pgsql
+---
+#
+# Create Discourse and sidekiq Deployment.
+#
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+
+metadata:
+  namespace: discourse-bitnami
+  name: discourse
+
+spec:
+  replicas: 1
+  minReadySeconds: 15
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+
+  selector:
+    matchLabels:
+      app: discourse
+      cat: web
+
+  template:
+
+    metadata:
+      labels:
+        app: discourse
+        cat: web
+
+    spec:
+      terminationGracePeriodSeconds: 15
+
+      volumes:
+
+      - name: discourse-pv
+        persistentVolumeClaim:
+          claimName: discourse-bitnami
+
+      containers:
+
+      # main
+      - name: discourse
+        image: bitnami/discourse:latest
+        imagePullPolicy: IfNotPresent
+
+        resources:
+
+          requests:
+            cpu: 500m
+            memory: 1Gi
+
+          limits:
+            cpu: 1
+            memory: 2Gi
+
+        envFrom:
+
+        - configMapRef:
+            name: discourse
+
+        - secretRef:
+            name: discourse
+
+        volumeMounts:
+
+        - name: discourse-pv
+          subPath: discourse
+          mountPath: /bitnami
+
+        ports:
+
+        - name: http-discourse
+          containerPort: 3000
+          protocol: TCP
+
+        # Discourse really takes its time to initialise.
+        # So before we even do the 1st check we wait 5 min (300).
+        # Then we keep re-checking every 15 sec for the next 10 min
+        # (40x15=600).
+        readinessProbe:
+          initialDelaySeconds: 300
+          timeoutSeconds: 1
+          successThreshold: 1
+          failureThreshold: 40
+          periodSeconds: 15
+          httpGet:
+            port: http-discourse
+            path: /srv/status
+
+        livenessProbe:
+          initialDelaySeconds: 600
+          timeoutSeconds: 1
+          failureThreshold: 3
+          periodSeconds: 50
+          httpGet:
+            port: http-discourse
+            path: /srv/status
+
+      # sidecar
+      - name: sidekiq
+        image: bitnami/discourse
+        imagePullPolicy: IfNotPresent
+
+        args:
+        - nami
+        - start
+        - --foreground
+        - discourse-sidekiq
+
+        resources:
+
+          requests:
+            cpu: 100m
+            memory: 100Mi
+
+          limits:
+            cpu: 100m
+            memory: 100Mi
+
+        envFrom:
+
+        - configMapRef:
+            name: discourse
+
+        - secretRef:
+            name: discourse
+
+        volumeMounts:
+
+        - name: discourse-pv
+          subPath: sidekiq
+          mountPath: /bitnami
+---
