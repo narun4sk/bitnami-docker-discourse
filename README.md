@@ -35,13 +35,26 @@ $ kubectl create -f ./k8s/manifests.yaml
 
 > NOTE: This will create `discourse-bitnami` namespace and deploy all the components in there.
 
-> NOTE: In example configuration we are using `hostPath` driver, which is suitable for the *sigle-node* cluster. Please change the driver to one which suits your environment better. See [Types of Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#types-of-persistent-volumes) for more info.
+> NOTE: In the example configuration we are using `hostPath` driver, which is only suitable in the *sigle-node* cluster. Please change the driver to one which suits your environment better. See [Types of Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#types-of-persistent-volumes) for more info.
 
 > NOTE: If you are pulling from a private containers registry, replace the image name with the full URL to the docker image. E.g.
 >
 > - image: 'your-registry/image-name:your-version'
 
-To clean up run:
+If you wanna monitor *Discourse* installation progress please run the following:
+
+```bash
+$ DISCOURSE_POD=$(kubectl -n discourse-bitnami get po | awk '/discourse/{print $1}')
+$ kubectl logs $DISCOURSE_POD discourse -f
+```
+
+If you wanna test successfull *Discourse* installation, please try the following and navigate your browser to http://127.0.0.1:3000.
+
+```bash
+$ kubectl -n discourse-bitnami port-forward svc/discourse 3000
+```
+
+To clean up:
 
 ```bash
 $ kubectl delete -f ./k8s/manifests.yaml
