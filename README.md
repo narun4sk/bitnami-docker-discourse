@@ -41,17 +41,18 @@ $ kubectl create -f ./k8s/manifests.yaml
 >
 > - image: 'your-registry/image-name:your-version'
 
-If you wanna monitor *Discourse* installation progress please run the following:
+If you want to monitor *Discourse* installation progress please run the following:
 
 ```bash
-$ DISCOURSE_POD=$(kubectl -n discourse-bitnami get po | awk '/discourse/{print $1}')
+$ DISCOURSE_POD=$(kubectl -n discourse-bitnami get po -o jsonpath='{.items[0].metadata.name}')
 $ kubectl logs $DISCOURSE_POD discourse -f
 ```
 
-If you wanna test successfull *Discourse* installation, please try the following and navigate your browser to http://127.0.0.1:3000.
+You can access your *Discourse* installation using [Port Forwarding](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/) as shown below:
 
 ```bash
 $ kubectl -n discourse-bitnami port-forward svc/discourse 3000
+$ curl http://127.0.0.1:3000
 ```
 
 To clean up:

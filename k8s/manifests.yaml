@@ -1,5 +1,5 @@
 #
-# Create a Namespace, where Discourse & friends will be deployed.
+# Create a Namespace, where Discourse related K8S resources will be deployed.
 #
 ---
 apiVersion: v1
@@ -9,7 +9,7 @@ metadata:
 ---
 #
 # Create PersistentVolume, where Discourse, PostgreSQL
-# and Redis gonna keep the data.
+# and Redis are going to keep the data.
 # Please feel free to change the hostPath driver to a
 # different one, which suits your environment better.
 #
